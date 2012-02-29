@@ -183,7 +183,6 @@ public class CordovaWebViewClient extends WebViewClient {
     
     @Override
     public void onPageStarted(WebView view, String url, Bitmap favicon) {
-
         // Clear history so history.back() doesn't do anything.  
         // So we can reinit() native side CallbackServer & PluginManager.
         view.clearHistory(); 
@@ -218,7 +217,7 @@ public class CordovaWebViewClient extends WebViewClient {
         // not loaded yet then just set a flag so that the onNativeReady can be fired
         // from the JS side when the JS gets to that code.
         if (!url.equals("about:blank")) {
-            ctx.appView.loadUrl("javascript:try{ Cordova.onNativeReady.fire();}catch(e){_nativeReady = true;}");
+            ctx.appView.loadUrl("javascript:try{ require('cordova/channel').onNativeReady.fire();}catch(e){_nativeReady = true;}");
         }
 
         // Make app visible after 2 sec in case there was a JS error and Cordova JS never initialized correctly
@@ -291,6 +290,17 @@ public class CordovaWebViewClient extends WebViewClient {
         } catch (NameNotFoundException e) {
             // When it doubt, lock it out!
             super.onReceivedSslError(view, handler, error);
+        }
+    }
+
+    @Override
+    public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
+        /* 
+         * If you do a document.location.href the url does not get pushed on the stack
+         * so we do a check here to see if the url should be pushed.
+         */
+        if (!this.ctx.peekAtUrlStack().equals(url)) {
+            this.ctx.pushUrl(url);
         }
     }
 }

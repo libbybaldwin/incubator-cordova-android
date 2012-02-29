@@ -31,27 +31,22 @@ import org.apache.cordova.PreferenceNode;
 import org.apache.cordova.PreferenceSet;
 import org.apache.cordova.api.IPlugin;
 import org.apache.cordova.api.LOG;
-import org.apache.cordova.api.CordovaActivity;
+import org.apache.cordova.api.CordovaInterface;
 import org.apache.cordova.api.PluginManager;
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.xmlpull.v1.XmlPullParserException;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
 import android.content.res.XmlResourceParser;
-import android.graphics.Bitmap;
+import android.database.Cursor;
 import android.graphics.Color;
 import android.media.AudioManager;
 import android.net.Uri;
-import android.net.http.SslError;
 import android.os.Bundle;
 import android.view.Display;
 import android.view.KeyEvent;
@@ -61,19 +56,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
-import android.webkit.ConsoleMessage;
-import android.webkit.GeolocationPermissions.Callback;
-import android.webkit.HttpAuthHandler;
-import android.webkit.JsPromptResult;
-import android.webkit.JsResult;
-import android.webkit.SslErrorHandler;
-import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebSettings.LayoutAlgorithm;
-import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 
 
@@ -159,7 +145,7 @@ import android.widget.LinearLayout;
  *          ...
  *      </plugins>
  */
-public class DroidGap extends CordovaActivity {
+public class DroidGap extends Activity implements CordovaInterface {
     public static String TAG = "DroidGap";
     
     // The webview for our app
@@ -225,8 +211,6 @@ public class DroidGap extends CordovaActivity {
 
     // preferences read from cordova.xml
     protected PreferenceSet preferences;
-
-    private boolean classicRender;
 
     /**
      * Sets the authentication token.
@@ -847,7 +831,7 @@ public class DroidGap extends CordovaActivity {
         }
 
         // Send pause event to JavaScript
-        this.appView.loadUrl("javascript:try{Cordova.fireDocumentEvent('pause');}catch(e){};");
+        this.appView.loadUrl("javascript:try{require('cordova/channel').onPause.fire();}catch(e){console.log('exception firing pause event from native');};");
 
         // Forward to plugins
         this.pluginManager.onPause(this.keepRunning);
@@ -888,7 +872,7 @@ public class DroidGap extends CordovaActivity {
         }
 
         // Send resume event to JavaScript
-        this.appView.loadUrl("javascript:try{Cordova.fireDocumentEvent('resume');}catch(e){};");
+        this.appView.loadUrl("javascript:try{require('cordova/channel').onResume.fire();}catch(e){console.log('exception firing resume event from native');};");
 
         // Forward to plugins
         this.pluginManager.onResume(this.keepRunning || this.activityResultKeepRunning);
@@ -918,13 +902,15 @@ public class DroidGap extends CordovaActivity {
 
 
             // Send destroy event to JavaScript
-            this.appView.loadUrl("javascript:try{Cordova.onDestroy.fire();}catch(e){};");
+            this.appView.loadUrl("javascript:try{require('cordova/channel').onDestroy.fire();}catch(e){console.log('exception firing destroy event from native');};");
 
             // Load blank page so that JavaScript onunload is called
             this.appView.loadUrl("about:blank");
 
             // Forward to plugins
-            this.pluginManager.onDestroy();
+            if (this.pluginManager != null) {
+                this.pluginManager.onDestroy();
+            }
         }
         else {
             this.endActivity();
@@ -940,7 +926,9 @@ public class DroidGap extends CordovaActivity {
     public void postMessage(String id, Object data) {
         
         // Forward to plugins
-        this.pluginManager.postMessage(id, data);
+        if (this.pluginManager != null) {
+            this.pluginManager.postMessage(id, data);
+        }
     }
 
     /**
@@ -1080,7 +1068,7 @@ public class DroidGap extends CordovaActivity {
 
             // If back key is bound, then send event to JavaScript
             if (this.bound) {
-                this.appView.loadUrl("javascript:Cordova.fireDocumentEvent('backbutton');");
+                this.appView.loadUrl("javascript:require('cordova').fireDocumentEvent('backbutton');");
                 return true;
             }
 
@@ -1102,13 +1090,13 @@ public class DroidGap extends CordovaActivity {
 
         // If menu key
         else if (keyCode == KeyEvent.KEYCODE_MENU) {
-            this.appView.loadUrl("javascript:Cordova.fireDocumentEvent('menubutton');");
+            this.appView.loadUrl("javascript:require('cordova').fireDocumentEvent('menubutton');");
             return super.onKeyDown(keyCode, event);
         }
 
         // If search key
         else if (keyCode == KeyEvent.KEYCODE_SEARCH) {
-            this.appView.loadUrl("javascript:Cordova.fireDocumentEvent('searchbutton');");
+            this.appView.loadUrl("javascript:require('cordova').fireDocumentEvent('searchbutton');");
             return true;
         }
 
@@ -1171,7 +1159,6 @@ public class DroidGap extends CordovaActivity {
          }        
      }
 
-     @Override
      public void setActivityResultCallback(IPlugin plugin) {
          this.activityResultCallback = plugin;
      }
@@ -1362,7 +1349,31 @@ public class DroidGap extends CordovaActivity {
         }
         return false;
     }
-
+    
+    /*
+     * URL stack manipulators
+     */
+    
+    /** 
+     * Returns the top url on the stack without removing it from 
+     * the stack.
+     */
+    public String peekAtUrlStack() {
+        if (urls.size() > 0) {
+            return urls.peek();
+        }
+        return "";
+    }
+    
+    /**
+     * Add a url to the stack
+     * 
+     * @param url
+     */
+    public void pushUrl(String url) {
+        urls.push(url);
+    }
+    
     /* 
      * Hook in DroidGap for menu plugins
      * 
@@ -1387,5 +1398,24 @@ public class DroidGap extends CordovaActivity {
     {
         this.postMessage("onOptionsItemSelected", item);
         return true;
+    }
+
+    public Context getContext() {
+      return this;
+    }
+
+    public Cursor managedQuery(Uri parse, String[] strings, Object object,
+        Object object2, Object object3) {
+      return this.managedQuery(parse, strings, object, object2, object3);
+    }
+
+    public void bindBackButton(boolean override) {
+      // TODO Auto-generated method stub
+      
+    }
+
+    public boolean isBackButtonBound() {
+      // TODO Auto-generated method stub
+      return false;
     }
 }

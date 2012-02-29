@@ -20,7 +20,7 @@ package org.apache.cordova;
 
 import java.util.List;
 
-import org.apache.cordova.api.CordovaActivity;
+import org.apache.cordova.api.CordovaInterface;
 import org.apache.cordova.api.Plugin;
 import org.apache.cordova.api.PluginResult;
 import org.json.JSONArray;
@@ -72,7 +72,7 @@ public class AccelListener extends Plugin implements SensorEventListener {
 	 * 
 	 * @param ctx The context of the main Activity.
 	 */
-	public void setContext(CordovaActivity ctx) {
+	public void setContext(CordovaInterface ctx) {
 		super.setContext(ctx);
         this.sensorManager = (SensorManager) ctx.getSystemService(Context.SENSOR_SERVICE);
 	}
@@ -148,7 +148,10 @@ public class AccelListener extends Plugin implements SensorEventListener {
 			else if (action.equals("getTimeout")) {
 				float f = this.getTimeout();
 				return new PluginResult(status, f);
-			}
+			} else {
+        // Unsupported action
+        return new PluginResult(PluginResult.Status.INVALID_ACTION);
+      }
 			return new PluginResult(status, result);
 		} catch (JSONException e) {
 			return new PluginResult(PluginResult.Status.JSON_EXCEPTION);
@@ -167,7 +170,7 @@ public class AccelListener extends Plugin implements SensorEventListener {
 		}
 		else if (action.equals("getAcceleration")) {
 			// Can only return value if RUNNING
-			if (this.status == RUNNING) {
+			if (this.status == AccelListener.RUNNING) {
 				return true;
 			}
 		}
