@@ -12,7 +12,7 @@ function captureAudioSuccess(mediaFiles) {
     var i, len;
     var formatSuccess = function (mediaFile) {
         document.getElementById('format-data').innerHTML = 
-            "Duration: <strong>" + mediaFile.duration/1000 + "s</strong><br/>";
+            "Duration: <strong>" + mediaFile.duration + "s</strong><br/>";
     };
     for (i = 0, len = mediaFiles.length; i < len; i += 1) {
         // uploadFile(mediaFiles[i]);
@@ -41,7 +41,7 @@ function captureVideoSuccess(mediaFiles) {
         document.getElementById('format-data').innerHTML = 
             "Height: <strong>" + mediaFile.height + "</strong><br/>" +
             "Width: <strong>" + mediaFile.width + "</strong><br/>" +
-            "Duration: <strong>" + mediaFile.duration/1000 + "s</strong><br/>";
+            "Duration: <strong>" + mediaFile.duration + "s</strong><br/>";
     };
     for (i = 0, len = mediaFiles.length; i < len; i += 1) {
         // uploadFile(mediaFiles[i]);
